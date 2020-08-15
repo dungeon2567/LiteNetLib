@@ -175,6 +175,8 @@ namespace LiteNetLib
         private byte _channelsCount = 1;
 
         internal readonly NetPacketPool NetPacketPool;
+        
+        private AutoResetEvent _sendPacketsEvent = new AutoResetEvent(false);
 
         //config section
         /// <summary>
@@ -699,8 +701,9 @@ namespace LiteNetLib
                 }
 
                 int sleepTime = UpdateTime - (int)stopwatch.ElapsedMilliseconds;
+
                 if (sleepTime > 0)
-                    Thread.Sleep(sleepTime);
+                    _sendPacketsEvent.WaitOne(sleepTime);
             }
             stopwatch.Stop();
         }
@@ -1315,6 +1318,13 @@ namespace LiteNetLib
             bool result = _socket.SendBroadcast(packet.RawData, 0, packet.Size, port);
             NetPacketPool.Recycle(packet);
             return result;
+        }
+
+        /// <summary>
+        /// Flush all queued packets of all peers on ReceiveThread
+        /// </summary>
+        public void FlushAsync(){
+            _sendPacketsEvent.Set();
         }
 
         /// <summary>
